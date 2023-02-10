@@ -1,3 +1,39 @@
+import pygame
+import sys
+import os
+import random
+
+
+def load_and_processingLVL(name_lvl=None, kol_enemies=5, spawn_boss=False, percent_spawnTRAPS=50, coins=5,
+                           add_bafs=True):
+    if not name_lvl:
+        print("Error - no name of file with lvl")
+    else:
+        with open(name_lvl, "r") as read_file:
+            with open("data/levels/tmp.txt", "w") as output_file:
+                strings = read_file.read()
+                output_file.truncate(0)
+                while kol_enemies or coins:
+                    for i in strings:
+                        skip_string = random.randint(0, 100) % 10
+                        i_copy = i
+                        if not skip_string:
+                            output_file.write(i_copy)
+                        else:
+                            for symb in range(len(i)):
+                                spawn_random = random.randint(0, 100)
+                                if i[symb] == "." and spawn_random % 3 == 0 and kol_enemies:
+                                    i_copy = i[:symb] + "+" + i[symb + 1:]
+                                    kol_enemies -= 1
+                                elif spawn_random % 17 == 0 and coins:
+                                    i_copy = i[:symb] + "0" + i[symb + 1:]
+                                    coins -= 1
+                                on_this_string = random.randint(0, 100)
+                                if on_this_string % 13 != 0:
+                                    break
+                            output_file.write(i_copy)
+
+
 def generate_lvls_v2(name_lvl_udate):
     # задаем необходимые переменные
     name_lvl_udate_2 = name_lvl_udate.split("/")[-1]
@@ -48,7 +84,8 @@ def generate_lvls_v2(name_lvl_udate):
 
 
 def load_image(name, colorkey=None):
-    fullname = os.path.join('data', name)
+    # fullname = os.path.join('data', name)
+    fullname = name
     try:
         image = pygame.image.load(fullname).convert()
     except pygame.error as message:
@@ -63,3 +100,269 @@ def load_image(name, colorkey=None):
     else:
         image = image.convert_alpha()
     return image
+
+
+clock = pygame.time.Clock()
+size = WIDTH, HEIGHT = 500, 500
+screen = pygame.display.set_mode(size)
+tile_width = tile_height = 50
+FPS = 50
+player = None
+all_sprites = pygame.sprite.Group()
+tiles_group = pygame.sprite.Group()
+player_group = pygame.sprite.Group()
+enemy_group = pygame.sprite.Group()
+corob_group = pygame.sprite.Group()
+group_pyls = pygame.sprite.Group()
+pygame.init()
+player_image = load_image('data/heroes/boss2.jpg', colorkey=-1)
+tile_images = {
+    'wall': load_image('data/floors_walls/wall.jpg'),
+    'empty': load_image('data/floors_walls/floor2.jpg'),
+    'traps': load_image('data/floors_walls/trap_1_lava.jpg'),
+    'enemy': load_image('data/heroes/slime.jpg')
+}
+
+
+def generate_level(level):
+    new_player, x, y = None, None, None
+    for y in range(len(level)):
+        for x in range(len(level[y])):
+            if level[y][x] == '.':
+                Tile('empty', x, y)
+            elif level[y][x] == '#':
+                Tile('wall', x, y)
+            elif level[y][x] == '@':
+                Tile('empty', x, y)
+                new_player = Player(x, y)
+            elif level[y][x] == '!':
+                Tile('empty', x, y)  # ловушка
+            elif level[y][x] == '?':
+                Tile('empty', x, y)  # замедление
+            elif level[y][x] == '%':
+                Tile('empty', x, y)  # ускорение
+            elif level[y][x] == '*':
+                Tile('empty', x, y)  # сундук
+            elif level[y][x] == '$':
+                Tile('empty', x, y)  # босс
+            elif level[y][x] == '+':
+                Tile('empty', x, y)  # враг
+            elif level[y][x] == '0':
+                Tile('moneys', x, y)  # монетки
+            elif level[y][x] == '_':
+                Tile('empty', x, y)  # баф
+    # вернем игрока, а также размер поля в клетках
+    return new_player, x, y
+
+
+class Camera:
+    # зададим начальный сдвиг камеры
+    def __init__(self):
+        self.dx = 0
+        self.dy = 0
+
+    # сдвинуть объект obj на смещение камеры
+    def apply(self, obj):
+        obj.rect.x += self.dx
+        obj.rect.y += self.dy
+
+    # позиционировать камеру на объекте target
+    def update(self, target):
+        self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
+        self.dy = -(target.rect.y + target.rect.h // 2 - HEIGHT // 2)
+
+
+class Tile(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        if tile_type == "wall":
+            super().__init__(tiles_group, all_sprites, corob_group)
+        else:
+            super().__init__(tiles_group, all_sprites)
+
+        self.image = pygame.transform.scale(tile_images[tile_type], (50, 50))
+        self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y)
+
+
+class Player(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(player_group, all_sprites)
+        self.image = pygame.transform.scale(player_image, (30, 30))
+        self.rect = self.image.get_rect().move(tile_width * pos_x + 15, tile_height * pos_y + 5)
+        self.health = 10
+        self.napr = "up"
+
+    def update_(self, coords):
+        self.rect = self.rect.move(coords[0], coords[1])
+        if pygame.sprite.spritecollideany(self, corob_group):
+            self.rect = self.rect.move(-coords[0], -coords[1])
+        if pygame.sprite.spritecollideany(self, enemy_group):
+            self.update_health(-1)
+            for i in enemy_group:
+                if pygame.sprite.collide_mask(self, i):
+                    i.update_health(-1)
+        if not coords[0]:
+            if coords[0] < 0:
+                self.napr = "left"
+            else:
+                self.napr = "right"
+        else:
+            if coords[1] > 0:
+                self.napr = "up"
+            else:
+                self.napr = "down"
+
+    def update_health(self, wht):
+        if type(wht) == int:
+            self.health += wht
+        if self.health > 10:
+            self.health = 10
+        elif self.health <= 0:
+            self.kill()
+            # КОНЕЦ ИГРЫ
+            pygame.quit()
+
+    def return_napr(self):
+        return self.napr
+
+    def return_coords(self):
+        return [self.rect.x, self.rect.y]
+
+
+class Pyla(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, image_pyl, napr):
+        super().__init__(group_pyls, all_sprites)
+        self.image = pygame.transform.scale(load_image(image_pyl), (30, 30))
+        self.rect = self.image.get_rect().move(tile_width * pos_x + 15, tile_height * pos_y + 5)
+        self.x = pos_x
+        self.y = pos_y
+        if napr == "left":
+            self.add = [-50, 0]
+        elif napr == "right":
+            self.add = [50, 0]
+        elif napr == "down":
+            self.add = [0, -50]
+        else:
+            self.add = [0, 50]
+
+
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(enemy_group, all_sprites)
+        self.image = pygame.transform.scale(player_image, (30, 30))
+        self.rect = self.image.get_rect().move(tile_width * pos_x + 15, tile_height * pos_y + 5)
+        self.wht = 3
+
+    def update_(self, coords):
+        self.rect = self.rect.move(coords[0], coords[1])
+        if pygame.sprite.spritecollideany(self, corob_group):
+            self.rect = self.rect.move(-coords[0], -coords[1])
+
+    def update_health(self, wht):
+        if type(wht) == int:
+            self.health += wht
+        if self.health > 10:
+            self.health = 10
+        elif self.health <= 0:
+            self.kill()
+            # ВРАГ УБИТ
+
+
+def load_level(filename):
+    filename = "data/" + filename
+    try:
+        with open(filename, 'r') as mapFile:
+            level_map = [line.strip() for line in mapFile]
+        print(level_map)
+        max_width = max(map(len, level_map))
+
+        return list(map(lambda x: x.ljust(max_width, '.'), level_map))
+    except Exception:
+        print(f"Ошибка. Файла {filename} не существует в памяти")
+
+
+def terminate():
+    pygame.quit()
+    sys.exit()
+
+
+def start_screen():
+    name_lvl = input("Введите название файла с уровнем\n")
+    intro_text = ["ЗАСТАВКА", "",
+                  "Правила игры",
+                  "Если в правилах несколько строк,",
+                  "приходится выводить их построчно"]
+
+    fon = pygame.transform.scale(load_image('data/floors_walls/fon.jpg'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font(None, 30)
+    text_coord = 50
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('black'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 10
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                player, level_x, level_y = generate_level(load_level(name_lvl))
+                return player
+        pygame.display.flip()
+        clock.tick(FPS)
+    pygame.quit()
+
+
+camera = Camera()
+player = start_screen()
+fps = 100
+running = True
+pygameSurface = pygame.transform.scale(pygame.image.load('data/floors_walls/EEhho.png'), (500, 500))
+pygameSurface.set_alpha(210)
+sp_pyls = []
+while running:
+    # внутри игрового цикла ещё один цикл
+    # приема и обработки сообщений
+    for event in pygame.event.get():
+        # при закрытии окна
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                player.update_([0, -50])
+            elif event.key == pygame.K_LEFT:
+                player.update_([-50, 0])
+            elif event.key == pygame.K_RIGHT:
+                player.update_([50, 0])
+            elif event.key == pygame.K_DOWN:
+                player.update_([0, 50])
+            elif event.key == pygame.K_SPACE:
+                # происходит выстрел пулей
+                x, y = player.return_coords()[0], player.return_coords()[1]
+                sp_pyls.append(
+                    Pyla(x, y, "data/bafs&dops/pyl.jpg", player.return_napr()))
+    camera.update(player)
+    screen.fill((0, 0, 0))
+    # screen.blit(picture, (0, 0), (0, 0, 500, 500))
+    # screen.blit(world, pygame.rect.Rect(0, 0, 500, 500))
+    # обновляем положение всех спрайтов
+    for i in sp_pyls:
+        i.update_()
+    for sprite in all_sprites:
+        camera.apply(sprite)
+    # отрисовка и изменение свойств объектов
+    # screen.fill((139, 0, 0))
+    all_sprites.update()
+    all_sprites.draw(screen)
+    player_group.draw(screen)
+    # обновление экрана
+    clock.tick(fps)
+    screen.blit(pygameSurface, pygameSurface.get_rect(center=screen.get_rect().center))
+    pygame.display.flip()
+pygame.quit()
+# generate_lvls_v2("data/levels/1_1.txt")
