@@ -114,13 +114,19 @@ player_group = pygame.sprite.Group()
 enemy_group = pygame.sprite.Group()
 corob_group = pygame.sprite.Group()
 group_pyls = pygame.sprite.Group()
+trap_group = pygame.sprite.Group()
+group_rewards = pygame.sprite.Group()
+
 pygame.init()
 player_image = load_image('data/heroes/boss2.jpg', colorkey=-1)
 tile_images = {
     'wall': load_image('data/floors_walls/wall.jpg'),
     'empty': load_image('data/floors_walls/floor2.jpg'),
     'traps': load_image('data/floors_walls/trap_1_lava.jpg'),
-    'enemy': load_image('data/heroes/slime.jpg')
+    'enemy': load_image('data/heroes/slime.jpg'),
+    'trap': load_image('data/floors_walls/trap_1_lava.jpg'),
+    'chest': load_image('data/bafs&dops/reward.jpg'),
+    'key': load_image('data/bafs&dops/key_for_chest.jpg')
 }
 
 
@@ -136,13 +142,13 @@ def generate_level(level):
                 Tile('empty', x, y)
                 new_player = Player(x, y)
             elif level[y][x] == '!':
-                Tile('empty', x, y)  # ловушка
+                Trap('trap', x, y)  # ловушка
             elif level[y][x] == '?':
                 Tile('empty', x, y)  # замедление
             elif level[y][x] == '%':
                 Tile('empty', x, y)  # ускорение
             elif level[y][x] == '*':
-                Tile('empty', x, y)  # сундук
+                Chest('chest', x, y)  # сундук
             elif level[y][x] == '$':
                 Tile('empty', x, y)  # босс
             elif level[y][x] == '+':
@@ -150,7 +156,7 @@ def generate_level(level):
             elif level[y][x] == '0':
                 Tile('moneys', x, y)  # монетки
             elif level[y][x] == '_':
-                Tile('empty', x, y)  # баф
+                Key('key', x, y)  # баф
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
 
@@ -172,6 +178,13 @@ class Camera:
         self.dy = -(target.rect.y + target.rect.h // 2 - HEIGHT // 2)
 
 
+class Trap(pygame.sprite.Sprite):
+    def __init__(self, image, pos_x, pos_y):
+        super().__init__(trap_group, all_sprites)
+        self.image = pygame.transform.scale(tile_images[image], (50, 50))
+        self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y)
+
+
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         if tile_type == "wall":
@@ -186,10 +199,11 @@ class Tile(pygame.sprite.Sprite):
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
-        self.image = pygame.transform.scale(player_image, (30, 30))
-        self.rect = self.image.get_rect().move(tile_width * pos_x + 15, tile_height * pos_y + 5)
-        self.health = 10
+        self.image = pygame.transform.scale(player_image, (40, 40))
+        self.rect = self.image.get_rect().move(tile_width * pos_x + 10, tile_height * pos_y + 5)
+        self.health = 3
         self.napr = "up"
+        self.x_napr = "right"
 
     def update_(self, coords):
         self.rect = self.rect.move(coords[0], coords[1])
@@ -200,22 +214,34 @@ class Player(pygame.sprite.Sprite):
             for i in enemy_group:
                 if pygame.sprite.collide_mask(self, i):
                     i.update_health(-1)
-        if not coords[0]:
-            if coords[0] < 0:
-                self.napr = "left"
-            else:
+        if pygame.sprite.spritecollideany(self, trap_group):
+            self.update_health(-1)
+        x_add = coords[0]
+        y_add = coords[1]
+        if x_add == 50:
+            if self.x_napr != "right":
+                self.image = pygame.transform.flip(self.image, 1, 0)
                 self.napr = "right"
+                self.x_napr = "right"
+        elif x_add == -50:
+            if self.x_napr != "left":
+                self.image = pygame.transform.flip(self.image, 1, 0)
+                self.napr = "left"
+                self.x_napr = "left"
+        elif y_add == 50:
+            self.napr = "up"
         else:
-            if coords[1] > 0:
-                self.napr = "up"
-            else:
-                self.napr = "down"
+            self.napr = "down"
+        if pygame.sprite.spritecollideany(self, group_rewards):
+            self.kill()
+            # КОНЕЦ ИГРЫ
+            pygame.quit()
 
     def update_health(self, wht):
         if type(wht) == int:
             self.health += wht
-        if self.health > 10:
-            self.health = 10
+        if self.health > 3:
+            self.health = 3
         elif self.health <= 0:
             self.kill()
             # КОНЕЦ ИГРЫ
@@ -227,6 +253,23 @@ class Player(pygame.sprite.Sprite):
     def return_coords(self):
         return [self.rect.x, self.rect.y]
 
+    def return_xp(self):
+        return self.health
+
+
+class Key(pygame.sprite.Sprite):
+    def __init__(self, image, pos_x, pos_y):
+        super().__init__(group_keys, all_sprites)
+        self.image = pygame.transform.scale(tile_images[image], (50, 50))
+        self.rect = self.image.get_rect().move(tile_width * pos_x + 15, tile_height * pos_y + 5)
+
+
+class Chest(pygame.sprite.Sprite):
+    def __init__(self, image, pos_x, pos_y):
+        super().__init__(group_rewards, all_sprites)
+        self.image = pygame.transform.scale(tile_images[image], (50, 50))
+        self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y + 5)
+
 
 class Pyla(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, image_pyl, napr):
@@ -235,11 +278,14 @@ class Pyla(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(tile_width * pos_x + 15, tile_height * pos_y + 5)
         self.x = pos_x
         self.y = pos_y
-        if napr == "left":
+        self.napr = napr
+
+    def update_(self):
+        if self.napr == "left":
             self.add = [-50, 0]
-        elif napr == "right":
+        elif self.napr == "right":
             self.add = [50, 0]
-        elif napr == "down":
+        elif self.napr == "down":
             self.add = [0, -50]
         else:
             self.add = [0, 50]
@@ -287,17 +333,18 @@ def terminate():
 
 def start_screen():
     name_lvl = input("Введите название файла с уровнем\n")
-    intro_text = ["ЗАСТАВКА", "",
-                  "Правила игры",
-                  "Если в правилах несколько строк,",
-                  "приходится выводить их построчно"]
-
-    fon = pygame.transform.scale(load_image('data/floors_walls/fon.jpg'), (WIDTH, HEIGHT))
+    intro_text = ["                                          ТАЙНЫ ПОДЗЕМЕЛИЙ", "",
+                  "Управление:",
+                  "   W, A, S, D - движение",
+                  "   R - атака",
+                  "   Esc - меню"]
+    screen = pygame.display.set_mode((720, 439))
+    fon = pygame.transform.scale(load_image('data/floors_walls/fon.jpg'), (720, 439))
     screen.blit(fon, (0, 0))
     font = pygame.font.Font(None, 30)
     text_coord = 50
     for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('black'))
+        string_rendered = font.render(line, 1, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
@@ -312,18 +359,29 @@ def start_screen():
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
                 player, level_x, level_y = generate_level(load_level(name_lvl))
+                screen = pygame.display.set_mode(size)
                 return player
         pygame.display.flip()
         clock.tick(FPS)
     pygame.quit()
 
 
+hp_1, hp_2, hp_3 = pygame.transform.scale(load_image("data/heroes/cerd.jpg", -1), (40, 40)), pygame.transform.scale(
+    load_image("data/heroes/cerd.jpg", -1), (40, 40)), pygame.transform.scale(load_image("data/heroes/cerd.jpg", -1),
+                                                                              (40, 40))
+hp_1r = hp_1.get_rect(center=(370, 20))
+hp_2r = hp_2.get_rect(center=(420, 20))
+hp_3r = hp_3.get_rect(center=(470, 20))
+
+sp_images_hp = [hp_3, hp_2, hp_1]
+sp_rects_hp = [hp_3r, hp_2r, hp_1r]
+
 camera = Camera()
 player = start_screen()
 fps = 100
 running = True
 pygameSurface = pygame.transform.scale(pygame.image.load('data/floors_walls/EEhho.png'), (500, 500))
-pygameSurface.set_alpha(210)
+pygameSurface.set_alpha(190)
 sp_pyls = []
 while running:
     # внутри игрового цикла ещё один цикл
@@ -359,10 +417,13 @@ while running:
     # screen.fill((139, 0, 0))
     all_sprites.update()
     all_sprites.draw(screen)
-    player_group.draw(screen)
+    # player_group.draw(screen)
     # обновление экрана
-    clock.tick(fps)
+    # clock.tick(fps)
     screen.blit(pygameSurface, pygameSurface.get_rect(center=screen.get_rect().center))
+    for i in range(player.return_xp()):
+        screen.blit(sp_images_hp[i], sp_rects_hp[i])
+    player_group.draw(screen)
+    clock.tick(fps)
     pygame.display.flip()
 pygame.quit()
-# generate_lvls_v2("data/levels/1_1.txt")
