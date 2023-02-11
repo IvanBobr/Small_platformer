@@ -116,6 +116,7 @@ corob_group = pygame.sprite.Group()
 group_pyls = pygame.sprite.Group()
 trap_group = pygame.sprite.Group()
 group_rewards = pygame.sprite.Group()
+group_keys = pygame.sprite.Group()
 
 pygame.init()
 player_image = load_image('data/heroes/boss2.jpg', colorkey=-1)
@@ -123,11 +124,17 @@ tile_images = {
     'wall': load_image('data/floors_walls/wall.jpg'),
     'empty': load_image('data/floors_walls/floor2.jpg'),
     'traps': load_image('data/floors_walls/trap_1_lava.jpg'),
-    'enemy': load_image('data/heroes/slime.jpg'),
+    'enemy': load_image('data/heroes/enemy_1.png', -1),
     'trap': load_image('data/floors_walls/trap_1_lava.jpg'),
     'chest': load_image('data/bafs&dops/reward.jpg'),
-    'key': load_image('data/bafs&dops/key_for_chest.jpg')
+    'key': load_image('data/bafs&dops/hp_add.jpg', -1),
+    'enemy_harted': load_image('data/heroes/enemy_1_harted.png', -1)
 }
+name_lvl = "data/"
+
+
+def change_namelvl(name):
+    name_lvl = name_lvl + f"{name}_{name}.txt"
 
 
 def generate_level(level):
@@ -152,10 +159,13 @@ def generate_level(level):
             elif level[y][x] == '$':
                 Tile('empty', x, y)  # босс
             elif level[y][x] == '+':
-                Tile('empty', x, y)  # враг
+                Tile('empty', x, y)
+                Enemy(x, y)  # враг
+                # Tile('empty',, x, y)  # враг
             elif level[y][x] == '0':
                 Tile('moneys', x, y)  # монетки
             elif level[y][x] == '_':
+                Tile('empty', x, y)
                 Key('key', x, y)  # баф
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
@@ -261,7 +271,12 @@ class Key(pygame.sprite.Sprite):
     def __init__(self, image, pos_x, pos_y):
         super().__init__(group_keys, all_sprites)
         self.image = pygame.transform.scale(tile_images[image], (50, 50))
-        self.rect = self.image.get_rect().move(tile_width * pos_x + 15, tile_height * pos_y + 5)
+        self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y)
+
+    def update_(self):
+        if pygame.sprite.spritecollideany(self, player_group):
+            player.update_health(1)
+            self.kill()
 
 
 class Chest(pygame.sprite.Sprite):
@@ -271,46 +286,57 @@ class Chest(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y + 5)
 
 
-class Pyla(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, image_pyl, napr):
-        super().__init__(group_pyls, all_sprites)
-        self.image = pygame.transform.scale(load_image(image_pyl), (30, 30))
-        self.rect = self.image.get_rect().move(tile_width * pos_x + 15, tile_height * pos_y + 5)
-        self.x = pos_x
-        self.y = pos_y
-        self.napr = napr
-
-    def update_(self):
-        if self.napr == "left":
-            self.add = [-50, 0]
-        elif self.napr == "right":
-            self.add = [50, 0]
-        elif self.napr == "down":
-            self.add = [0, -50]
-        else:
-            self.add = [0, 50]
+# class Pyla(pygame.sprite.Sprite):
+#     def __init__(self, pos_x, pos_y, image_pyl, napr):
+#         super().__init__(group_pyls, all_sprites)
+#         self.image = pygame.transform.scale(load_image(image_pyl), (30, 30))
+#         self.rect = self.image.get_rect().move(tile_width * pos_x + 15, tile_height * pos_y + 5)
+#         self.x = pos_x
+#         self.y = pos_y
+#         self.napr = napr
+#
+#     def update_(self):
+#         if self.napr == "left":
+#             self.add = [-50, 0]
+#         elif self.napr == "right":
+#             self.add = [50, 0]
+#         elif self.napr == "down":
+#             self.add = [0, -50]
+#         else:
+#             self.add = [0, 50]
 
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(enemy_group, all_sprites)
-        self.image = pygame.transform.scale(player_image, (30, 30))
-        self.rect = self.image.get_rect().move(tile_width * pos_x + 15, tile_height * pos_y + 5)
-        self.wht = 3
+        self.image = pygame.transform.scale(tile_images['enemy'], (50, 50))
+        self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y)
+        self.health = 2
 
-    def update_(self, coords):
-        self.rect = self.rect.move(coords[0], coords[1])
-        if pygame.sprite.spritecollideany(self, corob_group):
-            self.rect = self.rect.move(-coords[0], -coords[1])
+    # def update_(self, coords):
+    #     self.rect = self.rect.move(coords[0], coords[1])
+    #     if pygame.sprite.spritecollideany(self, corob_group):
+    #         self.rect = self.rect.move(-coords[0], -coords[1])
 
     def update_health(self, wht):
+        global screen
         if type(wht) == int:
             self.health += wht
-        if self.health > 10:
-            self.health = 10
+        if wht < 0:
+            print("HERE")
+            self.image = pygame.transform.scale(tile_images['enemy_harted'], (50, 50))
+            screen.blit(self.image, self.return_coords())
+            clock.tick(100)
+            screen.blit(self.image, self.return_coords())
+            enemy_group.draw(screen)
+        if self.health > 3:
+            self.health = 3
         elif self.health <= 0:
             self.kill()
             # ВРАГ УБИТ
+
+    def return_coords(self):
+        return [self.rect.x, self.rect.y]
 
 
 def load_level(filename):
@@ -332,12 +358,13 @@ def terminate():
 
 
 def start_screen():
-    name_lvl = input("Введите название файла с уровнем\n")
+    # name_lvl = input("Введите название файла с уровнем\n")
+    name_lvl = "levels/1_2.txt"
     intro_text = ["                                          ТАЙНЫ ПОДЗЕМЕЛИЙ", "",
                   "Управление:",
-                  "   W, A, S, D - движение",
-                  "   R - атака",
-                  "   Esc - меню"]
+                  "   стрелочки - движение",
+                  "   R - атака (in develop)",
+                  "   Esc - выход"]
     screen = pygame.display.set_mode((720, 439))
     fon = pygame.transform.scale(load_image('data/floors_walls/fon.jpg'), (720, 439))
     screen.blit(fon, (0, 0))
@@ -351,6 +378,8 @@ def start_screen():
         intro_rect.x = 10
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
+        pygame.mixer.music.load("data/music/main_level.mp3")
+        pygame.mixer.music.play(-1)
 
     while True:
         for event in pygame.event.get():
@@ -383,6 +412,8 @@ running = True
 pygameSurface = pygame.transform.scale(pygame.image.load('data/floors_walls/EEhho.png'), (500, 500))
 pygameSurface.set_alpha(190)
 sp_pyls = []
+pygame.mixer.music.load("data/music/main.mp3")
+pygame.mixer.music.play(-1)
 while running:
     # внутри игрового цикла ещё один цикл
     # приема и обработки сообщений
@@ -404,12 +435,34 @@ while running:
                 x, y = player.return_coords()[0], player.return_coords()[1]
                 sp_pyls.append(
                     Pyla(x, y, "data/bafs&dops/pyl.jpg", player.return_napr()))
+            elif event.key == pygame.K_r:
+                napr = player.return_napr()
+                coords_player = player.return_coords()
+                if napr == "down":
+                    coords_player[1] -= 50
+                elif napr == "up":
+                    coords_player[1] += 50
+                elif napr == "left":
+                    coords_player[0] -= 50
+                elif apr == "right":
+                    coords_player[0] += 50
+                print("coords_player:", coords_player)
+                coords_player[0] -= 10
+                coords_player[1] -= 5
+                for i in enemy_group:
+                    print(i.return_coords())
+                    if i.return_coords() == coords_player:
+                        i.update_health(-1)
+            elif event.key == pygame.K_ESCAPE:
+                running = False
     camera.update(player)
     screen.fill((0, 0, 0))
     # screen.blit(picture, (0, 0), (0, 0, 500, 500))
     # screen.blit(world, pygame.rect.Rect(0, 0, 500, 500))
     # обновляем положение всех спрайтов
     for i in sp_pyls:
+        i.update_()
+    for i in group_keys:
         i.update_()
     for sprite in all_sprites:
         camera.apply(sprite)
