@@ -4,6 +4,26 @@ import os
 import random
 
 
+def shortest_rast(chel, pos_enemy, pos_player):
+    print(chel, pos_enemy, pos_player, sep="\n")
+    rast = ((pos_enemy[0] - pos_player[0]) ** 2 + (pos_enemy[1] - pos_player[1]) ** 2) ** 0.5
+    if rast >= 200:
+        if pos_enemy[0] < pos_player[0]:
+            x = 1
+        elif pos_enemy[0] == pos_player[0]:
+            x = 0
+        else:
+            x = -1
+
+        if pos_enemy[1] < pos_player[1]:
+            y = 1
+        elif pos_enemy[1] == pos_player[1]:
+            y = 0
+        else:
+            y = -1
+        chel.update_([x, y])
+
+
 def load_and_processingLVL(name_lvl=None, kol_enemies=5, spawn_boss=False, percent_spawnTRAPS=50, coins=5,
                            add_bafs=True):
     if not name_lvl:
@@ -67,17 +87,18 @@ def generate_lvls_v2(name_lvl_udate):
         for strings_lvl in lvl_startV:
             copy_spawn1 = spawn_str_enemy
             copy_spawn2 = spawn_str_coins
+            print(kol_enemies)
             string_refacting = strings_lvl
             for kl in range(len(strings_lvl)):
-                if string_refacting[kl] == "." and copy_spawn1 >= 1 and kol_enemies >= 1:
+                if string_refacting[kl] == "." and copy_spawn1 >= 1 and kol_enemies >= 1 and random.randint(0, 2):
                     copy_spawn1 -= 1
                     kol_enemies -= 1
                     string_refacting = string_refacting[:kl] + "+" + string_refacting[kl + 1:]
-                if string_refacting[kl] == "." and copy_spawn2 >= 1 and kol_coins >= 1:
+                if string_refacting[kl] == "." and copy_spawn2 >= 1 and kol_coins >= 1 and random.randint(0, 2):
                     copy_spawn2 -= 1
                     kol_coins -= 1
                     string_refacting = string_refacting[:kl] + "!" + string_refacting[kl + 1:]
-                if spawn_boss and string_refacting[kl] == ".":
+                if spawn_boss and string_refacting[kl] == "." and random.randint(0, 2):
                     spawn_boss = False
                     string_refacting = string_refacting[:kl] + "$" + string_refacting[kl + 1:]
             work_file.write(string_refacting)
@@ -167,6 +188,9 @@ def generate_level(level):
             elif level[y][x] == '_':
                 Tile('empty', x, y)
                 Key('key', x, y)  # баф
+            elif level[y][x] == 'M':
+                Tile('empty', x, y)
+                # Rewards('reward_moneta', x, y)  # баф
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
 
@@ -216,38 +240,75 @@ class Player(pygame.sprite.Sprite):
         self.x_napr = "right"
 
     def update_(self, coords):
-        self.rect = self.rect.move(coords[0], coords[1])
-        if pygame.sprite.spritecollideany(self, corob_group):
-            self.rect = self.rect.move(-coords[0], -coords[1])
-        if pygame.sprite.spritecollideany(self, enemy_group):
-            self.update_health(-1)
-            for i in enemy_group:
-                if pygame.sprite.collide_mask(self, i):
-                    i.update_health(-1)
-        if pygame.sprite.spritecollideany(self, trap_group):
-            self.update_health(-1)
+        global running
         x_add = coords[0]
         y_add = coords[1]
         if x_add == 50:
-            if self.x_napr != "right":
+            if self.x_napr == "right":
+                self.rect = self.rect.move(coords[0], 0)
+                if pygame.sprite.spritecollideany(self, corob_group):
+                    self.rect = self.rect.move(-coords[0], 0)
+                if pygame.sprite.spritecollideany(self, enemy_group):
+                    self.update_health(-1)
+                    for i in enemy_group:
+                        if pygame.sprite.collide_mask(self, i):
+                            i.update_health(-1)
+                if pygame.sprite.spritecollideany(self, trap_group):
+                    self.update_health(-1)
+            else:
                 self.image = pygame.transform.flip(self.image, 1, 0)
-                self.napr = "right"
-                self.x_napr = "right"
+            self.napr = "right"
+            self.x_napr = "right"
         elif x_add == -50:
-            if self.x_napr != "left":
+            if self.x_napr == "left":
+                self.rect = self.rect.move(coords[0], 0)
+                if pygame.sprite.spritecollideany(self, corob_group):
+                    self.rect = self.rect.move(-coords[0], 0)
+                if pygame.sprite.spritecollideany(self, enemy_group):
+                    self.update_health(-1)
+                    for i in enemy_group:
+                        if pygame.sprite.collide_mask(self, i):
+                            i.update_health(-1)
+                if pygame.sprite.spritecollideany(self, trap_group):
+                    self.update_health(-1)
+            else:
                 self.image = pygame.transform.flip(self.image, 1, 0)
-                self.napr = "left"
-                self.x_napr = "left"
+            self.napr = "left"
+            self.x_napr = "left"
         elif y_add == 50:
+            if self.napr == "up":
+                self.rect = self.rect.move(0, coords[1])
+                if pygame.sprite.spritecollideany(self, corob_group):
+                    self.rect = self.rect.move(0, -coords[1])
+                if pygame.sprite.spritecollideany(self, enemy_group):
+                    self.update_health(-1)
+                    for i in enemy_group:
+                        if pygame.sprite.collide_mask(self, i):
+                            i.update_health(-1)
+                if pygame.sprite.spritecollideany(self, trap_group):
+                    self.update_health(-1)
             self.napr = "up"
         else:
+            if self.napr == "down":
+                self.rect = self.rect.move(0, coords[1])
+                if pygame.sprite.spritecollideany(self, corob_group):
+                    self.rect = self.rect.move(0, -coords[1])
+                if pygame.sprite.spritecollideany(self, enemy_group):
+                    self.update_health(-1)
+                    for i in enemy_group:
+                        if pygame.sprite.collide_mask(self, i):
+                            i.update_health(-1)
+                if pygame.sprite.spritecollideany(self, trap_group):
+                    self.update_health(-1)
             self.napr = "down"
         if pygame.sprite.spritecollideany(self, group_rewards):
             self.kill()
             # КОНЕЦ ИГРЫ
             pygame.quit()
+            running = False
 
     def update_health(self, wht):
+        global running
         if type(wht) == int:
             self.health += wht
         if self.health > 3:
@@ -256,6 +317,7 @@ class Player(pygame.sprite.Sprite):
             self.kill()
             # КОНЕЦ ИГРЫ
             pygame.quit()
+            running = False
 
     def return_napr(self):
         return self.napr
@@ -313,17 +375,20 @@ class Enemy(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y)
         self.health = 2
 
-    # def update_(self, coords):
-    #     self.rect = self.rect.move(coords[0], coords[1])
-    #     if pygame.sprite.spritecollideany(self, corob_group):
-    #         self.rect = self.rect.move(-coords[0], -coords[1])
+    def update_(self, coords):
+        self.rect = self.rect.move(coords[0], 0)
+        if pygame.sprite.spritecollideany(self, corob_group):
+            self.rect = self.rect.move(-coords[0], 0)
+        self.rect = self.rect.move(0, coords[1])
+        if pygame.sprite.spritecollideany(self, corob_group):
+            self.rect = self.rect.move(0, -coords[1])
 
     def update_health(self, wht):
         global screen
         if type(wht) == int:
             self.health += wht
         if wht < 0:
-            print("HERE")
+            # print("HERE")
             self.image = pygame.transform.scale(tile_images['enemy_harted'], (50, 50))
             screen.blit(self.image, self.return_coords())
             clock.tick(100)
@@ -340,11 +405,11 @@ class Enemy(pygame.sprite.Sprite):
 
 
 def load_level(filename):
-    filename = "data/" + filename
+    filename = filename
     try:
         with open(filename, 'r') as mapFile:
             level_map = [line.strip() for line in mapFile]
-        print(level_map)
+        # print(level_map)
         max_width = max(map(len, level_map))
 
         return list(map(lambda x: x.ljust(max_width, '.'), level_map))
@@ -359,7 +424,8 @@ def terminate():
 
 def start_screen():
     # name_lvl = input("Введите название файла с уровнем\n")
-    name_lvl = "levels/1_2.txt"
+    generate_lvls_v2("data/levels/1_2.txt")
+    name_lvl = "./tmp.txt"
     intro_text = ["                                          ТАЙНЫ ПОДЗЕМЕЛИЙ", "",
                   "Управление:",
                   "   стрелочки - движение",
@@ -378,8 +444,8 @@ def start_screen():
         intro_rect.x = 10
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
-        pygame.mixer.music.load("data/music/main_level.mp3")
-        pygame.mixer.music.play(-1)
+        # pygame.mixer.music.load("data/music/main_level.mp3")
+        # pygame.mixer.music.play(-1)
 
     while True:
         for event in pygame.event.get():
@@ -412,8 +478,8 @@ running = True
 pygameSurface = pygame.transform.scale(pygame.image.load('data/floors_walls/EEhho.png'), (500, 500))
 pygameSurface.set_alpha(190)
 sp_pyls = []
-pygame.mixer.music.load("data/music/main.mp3")
-pygame.mixer.music.play(-1)
+# pygame.mixer.music.load("data/music/main.mp3")
+# pygame.mixer.music.play(-1)
 while running:
     # внутри игрового цикла ещё один цикл
     # приема и обработки сообщений
@@ -444,39 +510,43 @@ while running:
                     coords_player[1] += 50
                 elif napr == "left":
                     coords_player[0] -= 50
-                elif apr == "right":
+                elif napr == "right":
                     coords_player[0] += 50
-                print("coords_player:", coords_player)
+                # print("coords_player:", coords_player)
                 coords_player[0] -= 10
                 coords_player[1] -= 5
                 for i in enemy_group:
-                    print(i.return_coords())
+                    # print(i.return_coords())
                     if i.return_coords() == coords_player:
                         i.update_health(-1)
             elif event.key == pygame.K_ESCAPE:
                 running = False
-    camera.update(player)
-    screen.fill((0, 0, 0))
-    # screen.blit(picture, (0, 0), (0, 0, 500, 500))
-    # screen.blit(world, pygame.rect.Rect(0, 0, 500, 500))
-    # обновляем положение всех спрайтов
-    for i in sp_pyls:
-        i.update_()
-    for i in group_keys:
-        i.update_()
-    for sprite in all_sprites:
-        camera.apply(sprite)
-    # отрисовка и изменение свойств объектов
-    # screen.fill((139, 0, 0))
-    all_sprites.update()
-    all_sprites.draw(screen)
-    # player_group.draw(screen)
-    # обновление экрана
-    # clock.tick(fps)
-    screen.blit(pygameSurface, pygameSurface.get_rect(center=screen.get_rect().center))
-    for i in range(player.return_xp()):
-        screen.blit(sp_images_hp[i], sp_rects_hp[i])
-    player_group.draw(screen)
-    clock.tick(fps)
-    pygame.display.flip()
+    if running:
+        camera.update(player)
+        screen.fill((0, 0, 0))
+        # screen.blit(picture, (0, 0), (0, 0, 500, 500))
+        # screen.blit(world, pygame.rect.Rect(0, 0, 500, 500))
+        # обновляем положение всех спрайтов
+        for i in sp_pyls:
+            i.update_()
+        for i in group_keys:
+            i.update_()
+        for sprite in all_sprites:
+            camera.apply(sprite)
+        # for enemy in enemy_group:
+        #     shortest_rast(enemy, enemy.return_coords(), player.return_coords())
+        # отрисовка и изменение свойств объектов
+        # screen.fill((139, 0, 0))
+        all_sprites.update()
+        all_sprites.draw(screen)
+        # player_group.draw(screen)
+        # обновление экрана
+        # clock.tick(fps)
+        screen.blit(pygameSurface, pygameSurface.get_rect(center=screen.get_rect().center))
+        for i in range(player.return_xp()):
+            screen.blit(sp_images_hp[i], sp_rects_hp[i])
+        player_group.draw(screen)
+        clock.tick(fps)
+        pygame.display.flip()
 pygame.quit()
+os.remove("./tmp.txt")
