@@ -2,6 +2,7 @@ import pygame
 import sys
 import os
 import random
+from math import sqrt
 
 
 def load_and_processingLVL(name_lvl=None, kol_enemies=5, spawn_boss=False, percent_spawnTRAPS=50, coins=5,
@@ -118,9 +119,12 @@ group_pyls = pygame.sprite.Group()
 trap_group = pygame.sprite.Group()
 group_rewards = pygame.sprite.Group()
 group_items = pygame.sprite.Group()
+group_bullets = pygame.sprite.Group()
+group_collision = pygame.sprite.Group()
 SHIELD_TIMER = 50
 HERO_SIZE = 40, 40
 BLOCK_SIZE = 68, 68
+BULLETS_SIZE = 15, 10
 
 
 pygame.init()
@@ -141,6 +145,7 @@ tile_images = {
     'key': load_image('data/bafs&dops/key.png', -1),
     'enemy_2': load_image('data/heroes/enemy_2.jpg', -1),
     'enemy_2_harted': load_image('data/heroes/enemy_2_harted.png', -1),
+    'bullet': load_image('data/bafs&dops/bullet.png', -1)
 }
 
 
@@ -151,7 +156,7 @@ def generate_level(level):
             if level[y][x] == '.':
                 Tile('empty', x, y)
             elif level[y][x] == '#':
-                Tile('wall', x, y)
+                Wall('wall', x, y)
             elif level[y][x] == '@':
                 Tile('empty', x, y)
                 new_player = (x, y)
@@ -209,7 +214,7 @@ class Camera:
 
 class Trap(pygame.sprite.Sprite):
     def __init__(self, image, pos_x, pos_y):
-        super().__init__(trap_group, all_sprites)
+        super().__init__(trap_group, all_sprites, group_collision)
         self.image = pygame.transform.scale(tile_images[image], BLOCK_SIZE)
         self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y)
         self.attack = 1
@@ -220,11 +225,14 @@ class Trap(pygame.sprite.Sprite):
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
-        if tile_type == "wall":
-            super().__init__(tiles_group, all_sprites, corob_group)
-        else:
-            super().__init__(tiles_group, all_sprites)
+        super().__init__(tiles_group, all_sprites)
+        self.image = pygame.transform.scale(tile_images[tile_type], BLOCK_SIZE)
+        self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y)
 
+
+class Wall(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(all_sprites, corob_group)
         self.image = pygame.transform.scale(tile_images[tile_type], BLOCK_SIZE)
         self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y)
 
@@ -276,6 +284,7 @@ class Player(pygame.sprite.Sprite):
         self.count_tmp = 0
         self.next_level = False
         self.attack = 1
+        self.magazine = 5
 
     def update_animation(self):
         self.animated_class.update__()
@@ -367,11 +376,11 @@ class Player(pygame.sprite.Sprite):
 
 class Items(pygame.sprite.Sprite):
     def __init__(self, type, pos_x, pos_y):
-        super().__init__(group_items, all_sprites)
+        super().__init__(group_items, all_sprites, group_collision)
         self.type = type
         if type[:-1] == "potion":
             type = type[:-1]
-        self.image = pygame.transform.scale(tile_images[type], BLOCK_SIZE)
+        self.image = pygame.transform.scale(tile_images[type], (BLOCK_SIZE[0] - 10, BLOCK_SIZE[1] - 10))
         self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y)
 
     def update_(self):
@@ -399,9 +408,56 @@ class Items(pygame.sprite.Sprite):
 
 class Chest(pygame.sprite.Sprite):
     def __init__(self, image, pos_x, pos_y):
-        super().__init__(group_rewards, all_sprites)
+        super().__init__(group_rewards, all_sprites, group_collision)
         self.image = pygame.transform.scale(tile_images[image], BLOCK_SIZE)
         self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y + 5)
+
+
+class Bullet(pygame.sprite.Sprite):
+    def __init__(self, image, pos_x, pos_y, dir, dir_dop, rot):
+        super().__init__(all_sprites, group_bullets)
+        self.pos_x = pos_x
+        self.pos_y = pos_y
+        self.pos_x_tmp = pos_x
+        self.pos_y_tmp = pos_y
+        self.bullets_size_x = BULLETS_SIZE[0]
+        self.bullets_size_y = BULLETS_SIZE[1]
+        if rot == 90 or 270:
+            self.bullets_size_y, self.bullets_size_x = self.bullets_size_x, self.bullets_size_y
+        self.image = pygame.transform.scale(tile_images[image], BULLETS_SIZE)
+        self.rect = self.image.get_rect().move(pos_x + HERO_SIZE[0] / 2 * dir_dop[0], pos_y + HERO_SIZE[1] / 2 * dir_dop[1])
+        self.v = 20
+        self.dx = dir[0] * self.v
+        self.dy = dir[1] * self.v
+        self.block = 3
+        self.attack = 1
+        self.image = pygame.transform.rotate(self.image, rot)
+
+    def dist(self):
+        return sqrt((self.rect.x - self.pos_x) ** 2 + (self.rect.y - self.pos_y) ** 2)
+
+    def update_(self):
+        self.rect = self.rect.move(self.dx, self.dy)
+        self.pos_x_tmp += self.dx
+        self.pos_y_tmp += self.dy
+        if self.dist() / BLOCK_SIZE[0] >= self.block:
+            self.kill()
+        if pygame.sprite.spritecollideany(self, group_collision):
+            self.kill()
+        if pygame.sprite.spritecollideany(self, corob_group):
+            self.kill()
+        if pygame.sprite.spritecollideany(self, enemy_group):
+            coords_p = [self.rect.x, self.rect.y]
+            for i in enemy_group:
+                coords_e = i.return_coords()
+                print(coords_p, [self.pos_x_tmp, self.pos_y_tmp], coords_e)
+                if abs(coords_p[0] - coords_e[0]) <= 80:
+                    if abs(coords_p[1] - coords_e[1]) <= 80:
+                        i.update_health(-self.attack)
+                        break
+            self.kill()
+
+
 
 
 '''    class Pyla(pygame.sprite.Sprite):
@@ -623,6 +679,30 @@ if fl:
                                 if abs(coords_player[0] - i.return_coords()[0]) <= 30:
                                     if abs(coords_player[1] - i.return_coords()[1]) <= 30:
                                         i.update_health(-player.attack)
+                        elif event.key == pygame.K_t:
+                            napr = player.return_napr()
+                            coords_player = player.return_coords()
+                            dir = [0, 0]
+                            dir_dop = [0, 0]
+                            rot = 0
+                            if napr == "down":
+                                dir[1] = 1
+                                dir_dop[0] = 1
+                                dir_dop[1] = 1
+                                rot = 270
+                            elif napr == "up":
+                                dir[1] = -1
+                                dir_dop[0] = 1
+                                rot = 90
+                            elif napr == "left":
+                                dir[0] = -1
+                                dir_dop[1] = 1
+                                rot = 180
+                            elif napr == "right":
+                                dir[0] = 1
+                                dir_dop[1] = 1
+                                dir_dop[0] = 1
+                            Bullet('bullet', coords_player[0], coords_player[1], dir, dir_dop, rot)
                         elif event.key == pygame.K_ESCAPE:
                             running = False
                     elif event.type == pygame.KEYUP and WALK:
@@ -668,6 +748,9 @@ if fl:
                 clock.tick(fps)
                 clock.tick(clock_fps)
                 player.update_animation()
+                for i in group_bullets:
+                    print(i)
+                    i.update_()
                 pygame.display.flip()
             player = None
             all_sprites = pygame.sprite.Group()
@@ -679,6 +762,8 @@ if fl:
             trap_group = pygame.sprite.Group()
             group_rewards = pygame.sprite.Group()
             group_items = pygame.sprite.Group()
+            group_bullets = pygame.sprite.Group()
+            group_collision = pygame.sprite.Group()
 if fl:
     game_over()
     print(f"Your score: {SCORE}")
