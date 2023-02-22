@@ -264,7 +264,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
-        self.animated_class = AnimatedSprite(load_image("data/heroes/dragon_sheet8x2.png"),
+        self.animated_class = AnimatedSprite(load_image("data/heroes/dragon_sheet8x2.png", -1),
                                              8, 2)
         self.image = self.animated_class.image
         self.mask = pygame.mask.from_surface(self.image)
@@ -556,8 +556,8 @@ def start_screen():
         intro_rect.x = 10
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
-        pygame.mixer.music.load("data/music/main_level.mp3")
-        pygame.mixer.music.play(-1)
+        #pygame.mixer.music.load("data/music/main_level.mp3")
+        #pygame.mixer.music.play(-1)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -601,7 +601,7 @@ def game_over():
     pygame.quit()
 
 
-levels = [1, 2]
+levels = [2, 1]
 fl = start_screen()
 fl_died = 0
 SCORE = 0
@@ -629,8 +629,8 @@ if fl:
             pygameSurface = pygame.transform.scale(pygame.image.load('data/floors_walls/EEhho.png'), (500, 500))
             pygameSurface.set_alpha(190)
             sp_pyls = []
-            pygame.mixer.music.load("data/music/main.mp3")
-            pygame.mixer.music.play(-1)
+            #pygame.mixer.music.load("data/music/main.mp3")
+            #pygame.mixer.music.play(-1)
             WALK = False
             while running:
                 # внутри игрового цикла ещё один цикл
