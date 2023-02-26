@@ -126,7 +126,6 @@ HERO_SIZE = 40, 40
 BLOCK_SIZE = 68, 68
 BULLETS_SIZE = 15, 10
 
-
 pygame.init()
 player_image = load_image('data/heroes/boss2.jpg', colorkey=-1)
 tile_images = {
@@ -161,10 +160,10 @@ def generate_level(level):
                 Tile('empty', x, y)
                 new_player = (x, y)
             elif level[y][x] == '!':
-                Trap('trap', x, y) # ловушка
+                Trap('trap', x, y)  # ловушка
             elif level[y][x] == '?':
                 Tile('empty', x, y)
-                Items('potion-', x, y) # замедление
+                Items('potion-', x, y)  # замедление
             elif level[y][x] == '%':
                 Tile('empty', x, y)
                 Items('potion+', x, y)  # ускорение
@@ -248,7 +247,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
 
     def cut_sheet(self, sheet, columns, rows):
         rect = pygame.Rect(0, 0, sheet.get_width() // columns,
-                                sheet.get_height() // rows)
+                           sheet.get_height() // rows)
         for j in range(rows):
             for i in range(columns):
                 frame_location = (rect.w * i, rect.h * j)
@@ -425,7 +424,8 @@ class Bullet(pygame.sprite.Sprite):
         if rot == 90 or 270:
             self.bullets_size_y, self.bullets_size_x = self.bullets_size_x, self.bullets_size_y
         self.image = pygame.transform.scale(tile_images[image], BULLETS_SIZE)
-        self.rect = self.image.get_rect().move(pos_x + HERO_SIZE[0] / 2 * dir_dop[0], pos_y + HERO_SIZE[1] / 2 * dir_dop[1])
+        self.rect = self.image.get_rect().move(pos_x + HERO_SIZE[0] / 2 * dir_dop[0],
+                                               pos_y + HERO_SIZE[1] / 2 * dir_dop[1])
         self.v = 20
         self.dx = dir[0] * self.v
         self.dy = dir[1] * self.v
@@ -458,8 +458,6 @@ class Bullet(pygame.sprite.Sprite):
             self.kill()
 
 
-
-
 '''    class Pyla(pygame.sprite.Sprite):
         def __init__(self, pos_x, pos_y, image_pyl, napr):
             super().__init__(group_pyls, all_sprites)
@@ -468,7 +466,7 @@ class Bullet(pygame.sprite.Sprite):
             self.x = pos_x
             self.y = pos_y
             self.napr = napr
-    
+
          def update_(self):
             if self.napr == "left":
                 self.add = [-50, 0]
@@ -556,8 +554,8 @@ def start_screen():
         intro_rect.x = 10
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
-        #pygame.mixer.music.load("data/music/main_level.mp3")
-        #pygame.mixer.music.play(-1)
+        # pygame.mixer.music.load("data/music/main_level.mp3")
+        # pygame.mixer.music.play(-1)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -601,14 +599,15 @@ def game_over():
     pygame.quit()
 
 
-levels = [2, 1]
+levels = [1, 2, 3, 4, 5]
 fl = start_screen()
 fl_died = 0
 SCORE = 0
 if fl:
     for i in levels:
         if fl_died == 0:
-            hp_1, hp_2, hp_3 = pygame.transform.scale(load_image("data/heroes/cerd.jpg", -1), (40, 40)), pygame.transform.scale(
+            hp_1, hp_2, hp_3 = pygame.transform.scale(load_image("data/heroes/cerd.jpg", -1),
+                                                      (40, 40)), pygame.transform.scale(
                 load_image("data/heroes/cerd.jpg", -1), (40, 40)), pygame.transform.scale(
                 load_image("data/heroes/cerd.jpg", -1),
                 (40, 40))
@@ -629,8 +628,8 @@ if fl:
             pygameSurface = pygame.transform.scale(pygame.image.load('data/floors_walls/EEhho.png'), (500, 500))
             pygameSurface.set_alpha(190)
             sp_pyls = []
-            #pygame.mixer.music.load("data/music/main.mp3")
-            #pygame.mixer.music.play(-1)
+            # pygame.mixer.music.load("data/music/main.mp3")
+            # pygame.mixer.music.play(-1)
             WALK = False
             while running:
                 # внутри игрового цикла ещё один цикл
