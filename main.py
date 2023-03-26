@@ -628,8 +628,8 @@ if fl:
             pygameSurface = pygame.transform.scale(pygame.image.load('data/floors_walls/EEhho.png'), (500, 500))
             pygameSurface.set_alpha(190)
             sp_pyls = []
-            # pygame.mixer.music.load("data/music/main.mp3")
-            # pygame.mixer.music.play(-1)
+            pygame.mixer.music.load("data/music/main.mp3")
+            pygame.mixer.music.play(-1)
             WALK = False
             while running:
                 # внутри игрового цикла ещё один цикл
